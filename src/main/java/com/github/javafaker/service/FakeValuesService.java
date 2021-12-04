@@ -4,6 +4,7 @@ import com.github.javafaker.Address;
 import com.github.javafaker.Faker;
 import com.github.javafaker.Name;
 import com.github.javafaker.service.files.EnFile;
+import com.google.common.collect.Lists;
 import com.mifmif.common.regex.Generex;
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -182,17 +183,13 @@ public class FakeValuesService {
      * Otherwise it will just return the values as strings.
      *
      * @param key           the key to fetch from the YML structure.
-     * @param defaultIfNull the value to return if the fetched value is null
      * @return see above
      */
-    public List<String> safeFetchAll(String key, List<String> defaultIfNull) {
+    public List<String> safeFetchAll(String key) {
         List<String> results = new ArrayList<String>();
         Object o = fetchObject(key);
         if (o instanceof List) {
             List<String> values = (List<String>) o;
-            if (values.size() == 0) {
-                return defaultIfNull;
-            }
             for (String s: values) {
                 if (isSlashDelimitedRegex(o.toString())) {
                     results.add(String.format("#{regexify '%s'}", trimRegexSlashes(o.toString())));
@@ -345,6 +342,27 @@ public class FakeValuesService {
     }
 
     /**
+     * Resolves a key to a method on an object.
+     * <p>
+     * #{hello} with result in a method call to current.hello();
+     * <p>
+     * #{Person.hello_someone} will result in a method call to person.helloSomeone();
+     */
+    public List<String> resolveAll(String key, Object current, Faker root) {
+        System.out.println("Calling resolveAll, key=" + key);
+        final List<String> expressions = safeFetchAll(key);
+        List<String> results = new ArrayList<>();
+        if (expressions.isEmpty()) {
+            throw new RuntimeException(key + " resulted in no expressions");
+        }
+        for (String expr : expressions) {
+            System.out.println("Recursively resolving expression: " + expr);
+            results.addAll(resolveExpressionAll(expr, current, root));
+        }
+        return results;
+    }
+
+    /**
      * resolves an expression using the current faker.
      *
      * @param expression
@@ -374,11 +392,13 @@ public class FakeValuesService {
      * </p>
      */
     protected String resolveExpression(String expression, Object current, Faker root) {
+        System.out.println("Calling protected resolveExpression, expression=" + expression);
         final Matcher matcher = EXPRESSION_PATTERN.matcher(expression);
 
         String result = expression;
         while (matcher.find()) {
             final String escapedDirective = matcher.group(0);
+            System.out.println("Match found for expression: " + expression + ", escapedDirective=" + escapedDirective);
             final String directive = matcher.group(1);
             final String arguments = matcher.group(2);
             final Matcher argsMatcher = EXPRESSION_ARGUMENTS_PATTERN.matcher(arguments);
@@ -389,14 +409,66 @@ public class FakeValuesService {
 
             // resolve the expression and reprocess it to handle recursive templates
             String resolved = resolveExpression(directive, args, current, root);
+            System.out.println("resolved: " + resolved);
             if (resolved == null) {
                 throw new RuntimeException("Unable to resolve " + escapedDirective + " directive.");
             }
 
             resolved = resolveExpression(resolved, current, root);
+            System.out.println("resolved: " + resolved);
             result = StringUtils.replaceOnce(result, escapedDirective, resolved);
         }
+        System.out.println("Results: " + result);
         return result;
+    }
+
+    protected List<String> resolveExpressionAll(String expression, Object current, Faker root) {
+        System.out.println("Calling protected resolveExpressionAll, expression=" + expression);
+        final Matcher matcher = EXPRESSION_PATTERN.matcher(expression);
+
+        List<String> results = new ArrayList<>();
+
+        List<String> matchedDirectives = new ArrayList<>();
+        List<List<String>> resolvedExprs = new ArrayList<>();
+
+        while (matcher.find()) {
+            final String escapedDirective = matcher.group(0);
+            System.out.println("Match found for expression: " + expression + ", escapedDirective=" + escapedDirective);
+            final String directive = matcher.group(1);
+            final String arguments = matcher.group(2);
+            final Matcher argsMatcher = EXPRESSION_ARGUMENTS_PATTERN.matcher(arguments);
+            List<String> args = new ArrayList<>();
+            while (argsMatcher.find()) {
+                args.add(argsMatcher.group(1));
+            }
+
+            // resolve the expression and reprocess it to handle recursive templates
+            List<String> resolved = resolveExpressionAll(directive, args, current, root);
+            List<String> resolvedResult = new ArrayList<>();
+            if (resolved.isEmpty()) {
+                throw new RuntimeException("Unable to resolve " + escapedDirective + " directive.");
+            }
+            for (String expr: resolved) {
+                System.out.println("expr: " + expr);
+                List<String> recurResolved = resolveExpressionAll(expr, current, root);
+                System.out.println("recurResolved: " + recurResolved.toString());
+                resolvedResult.addAll(recurResolved);
+            }
+            matchedDirectives.add(escapedDirective);
+            resolvedExprs.add(resolvedResult);
+        }
+
+        List<List<String>> resolutions = Lists.cartesianProduct(resolvedExprs);
+        for (List<String> values: resolutions) {
+            String modified = expression;
+            for (int counter = 0; counter < values.size(); counter++){
+                modified = StringUtils.replaceOnce(modified, matchedDirectives.get(counter), values.get(counter));
+            }
+            results.add(modified);
+        }
+
+        System.out.println("Results: " + results.toString());
+        return results;
     }
 
     /**
@@ -411,6 +483,7 @@ public class FakeValuesService {
      * @return null if unable to resolve
      */
     private String resolveExpression(String directive, List<String> args, Object current, Faker root) {
+        System.out.println("Calling private resolveExpression, directive=" + directive);
         // name.name (resolve locally)
         // Name.first_name (resolve to faker.name().firstName())
         final String simpleDirective = (isDotDirective(directive) || current == null)
@@ -450,9 +523,59 @@ public class FakeValuesService {
             resolved = safeFetch(javaNameToYamlName(simpleDirective), null);
         }
 
+        System.out.println("Resolved: " + resolved);
         return resolved;
     }
 
+    private List<String> resolveExpressionAll(String directive, List<String> args, Object current, Faker root) {
+        System.out.println("Calling private resolveExpressionAll, directive=" + directive);
+        // name.name (resolve locally)
+        // Name.first_name (resolve to faker.name().firstName())
+        final String simpleDirective = (isDotDirective(directive) || current == null)
+                ? directive
+                : classNameToYamlName(current) + "." + directive;
+
+        List<String> resolved = new ArrayList<String>();
+        // resolve method references on CURRENT object like #{number_between '1','10'} on Number or
+        // #{ssn_valid} on IdNumber
+        if (!isDotDirective(directive)) {
+            System.out.println("Resolving from current object references");
+            resolved.add(resolveFromMethodOn(current, directive, args));
+        }
+
+        // simple fetch of a value from the yaml file. the directive may have been mutated
+        // such that if the current yml object is car: and directive is #{wheel} then
+        // car.wheel will be looked up in the YAML file.
+        if (resolved.isEmpty()) {
+            System.out.println("Resolving from local keys in YAML");
+            resolved = safeFetchAll(simpleDirective);
+        }
+
+        // resolve method references on faker object like #{regexify '[a-z]'}
+        if (resolved.isEmpty() && !isDotDirective(directive)) {
+            System.out.println("Resolving from faker object references");
+            resolved.add(resolveFromMethodOn(root, directive, args));
+        }
+
+        // Resolve Faker Object method references like #{ClassName.method_name}
+        if (resolved.isEmpty() && isDotDirective(directive)) {
+            System.out.println("Resolving from faker object references");
+            resolved.add(resolveFakerObjectAndMethod(root, directive, args));
+        }
+
+        // last ditch effort.  Due to Ruby's dynamic nature, something like 'Address.street_title' will resolve
+        // because 'street_title' is a dynamic method on the Address object.  We can't do this in Java so we go
+        // thru the normal resolution above, but if we will can't resolve it, we once again do a 'safeFetch' as we
+        // did first but FIRST we change the Object reference Class.method_name with a yml style internal refernce ->
+        // class.method_name (lowercase)
+        if (resolved.isEmpty() && isDotDirective(directive)) {
+            System.out.println("Resolving from YAML-style references");
+            resolved = safeFetchAll(javaNameToYamlName(simpleDirective));
+        }
+
+        System.out.println("Resolved: " + resolved.toString());
+        return resolved;
+    }
 
     /**
      * @param expression input expression
