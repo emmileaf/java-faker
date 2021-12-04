@@ -172,6 +172,39 @@ public class FakeValuesService {
     }
 
     /**
+     * Safely fetches a key, returning a list of all available results.
+     * <p>
+     * If there are no available values, it will return an empty list.
+     * <p>
+     * If the retrieved values are slash encoded regular expressions such as {@code /[a-b]/} then
+     * the regex will be converted to a regexify expression and returned (ex. {@code #regexify '[a-b]'})
+     * <p>
+     * Otherwise it will just return the values as strings.
+     *
+     * @param key           the key to fetch from the YML structure.
+     * @param defaultIfNull the value to return if the fetched value is null
+     * @return see above
+     */
+    public List<String> safeFetchAll(String key, List<String> defaultIfNull) {
+        List<String> results = new ArrayList<String>();
+        Object o = fetchObject(key);
+        if (o instanceof List) {
+            List<String> values = (List<String>) o;
+            if (values.size() == 0) {
+                return defaultIfNull;
+            }
+            for (String s: values) {
+                if (isSlashDelimitedRegex(o.toString())) {
+                    results.add(String.format("#{regexify '%s'}", trimRegexSlashes(o.toString())));
+                } else {
+                    results.add(s);
+                }
+            }
+        }
+        return results;
+    }
+
+    /**
      * Return the object selected by the key from yaml file.
      *
      * @param key key contains path to an object. Path segment is separated by
