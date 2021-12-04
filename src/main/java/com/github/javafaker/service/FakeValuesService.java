@@ -540,7 +540,10 @@ public class FakeValuesService {
         // #{ssn_valid} on IdNumber
         if (!isDotDirective(directive)) {
             System.out.println("Resolving from current object references");
-            resolved.add(resolveFromMethodOn(current, directive, args));
+            String res = resolveFromMethodOn(current, directive, args);
+            if (res != null) {
+                resolved.add(res);
+            }
         }
 
         // simple fetch of a value from the yaml file. the directive may have been mutated
@@ -554,13 +557,19 @@ public class FakeValuesService {
         // resolve method references on faker object like #{regexify '[a-z]'}
         if (resolved.isEmpty() && !isDotDirective(directive)) {
             System.out.println("Resolving from faker object references");
-            resolved.add(resolveFromMethodOn(root, directive, args));
+            String res = resolveFromMethodOn(root, directive, args);
+            if (res != null) {
+                resolved.add(res);
+            }
         }
 
         // Resolve Faker Object method references like #{ClassName.method_name}
         if (resolved.isEmpty() && isDotDirective(directive)) {
             System.out.println("Resolving from faker object references");
-            resolved.add(resolveFakerObjectAndMethod(root, directive, args));
+            String res = resolveFakerObjectAndMethod(root, directive, args);
+            if (res != null) {
+                resolved.add(res);
+            }
         }
 
         // last ditch effort.  Due to Ruby's dynamic nature, something like 'Address.street_title' will resolve

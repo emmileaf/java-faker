@@ -2,6 +2,8 @@ package com.github.javafaker;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.List;
+
 public class Name {
     
     private final Faker faker;
@@ -27,6 +29,10 @@ public class Name {
      */
     public String name() {
         return faker.fakeValuesService().resolve("name.name", this, faker);
+    }
+
+    public List<String> names() {
+        return faker.fakeValuesService().resolveAll("name.name", this, faker);
     }
 
     /**
@@ -62,12 +68,20 @@ public class Name {
         return faker.fakeValuesService().resolve("name.first_name", this, faker);
     }
 
+    public List<String> firstNames() {
+        return faker.fakeValuesService().resolveAll("name.first_name", this, faker);
+    }
+
     /**
      * <p>Returns a random last name such as Smith, Jones or Baldwin</p>
      * @return a random last name such as Smith, Jones or Baldwin
      */
     public String lastName() {
         return faker.fakeValuesService().resolve("name.last_name", this, faker);
+    }
+
+    public List<String> lastNames() {
+        return faker.fakeValuesService().resolveAll("name.last_name", this, faker);
     }
 
     /**
@@ -78,12 +92,19 @@ public class Name {
         return faker.fakeValuesService().resolve("name.prefix", this, faker);
     }
 
+    public List<String> prefixes() {
+        return faker.fakeValuesService().resolveAll("name.prefix", this, faker);
+    }
+
     /**
      * <p>Returns a name suffix such as Jr., Sr., I, II, III, IV, V, MD, DDS, PhD or DVM</p>
      * @return a name suffix such as Jr., Sr., I, II, III, IV, V, MD, DDS, PhD or DVM
      */
     public String suffix() {
         return faker.fakeValuesService().resolve("name.suffix", this, faker);
+    }
+    public List<String> suffixes() {
+        return faker.fakeValuesService().resolveAll("name.suffix", this, faker);
     }
 
     /**
