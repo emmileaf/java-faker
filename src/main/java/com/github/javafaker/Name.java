@@ -1,7 +1,10 @@
 package com.github.javafaker;
 
+import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Name {
@@ -31,8 +34,12 @@ public class Name {
         return faker.fakeValuesService().resolve("name.name", this, faker);
     }
 
-    public List<String> names() {
-        return faker.fakeValuesService().resolveAll("name.name", this, faker);
+    public List<String> name(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.name", this, faker);
+        } else {
+            return Arrays.asList(name());
+        }
     }
 
     /**
@@ -52,12 +59,24 @@ public class Name {
         return faker.fakeValuesService().resolve("name.name_with_middle", this, faker);
     }
 
+    public List<String> nameWithMiddle(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.name_with_middle", this, faker);
+        } else {
+            return Arrays.asList(nameWithMiddle());
+        }
+    }
+
     /**
      * <p>Returns the same value as {@link #name()}</p>
      * @see Name#name() 
      */
     public String fullName() {
         return name();
+    }
+
+    public List<String> fullName(Boolean returnAll) {
+        return name(returnAll);
     }
 
     /**
@@ -68,8 +87,12 @@ public class Name {
         return faker.fakeValuesService().resolve("name.first_name", this, faker);
     }
 
-    public List<String> firstNames() {
-        return faker.fakeValuesService().resolveAll("name.first_name", this, faker);
+    public List<String> firstName(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.first_name", this, faker);
+        } else {
+            return Arrays.asList(firstName());
+        }
     }
 
     /**
@@ -80,8 +103,12 @@ public class Name {
         return faker.fakeValuesService().resolve("name.last_name", this, faker);
     }
 
-    public List<String> lastNames() {
-        return faker.fakeValuesService().resolveAll("name.last_name", this, faker);
+    public List<String> lastName(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.last_name", this, faker);
+        } else {
+            return Arrays.asList(lastName());
+        }
     }
 
     /**
@@ -92,8 +119,12 @@ public class Name {
         return faker.fakeValuesService().resolve("name.prefix", this, faker);
     }
 
-    public List<String> prefixes() {
-        return faker.fakeValuesService().resolveAll("name.prefix", this, faker);
+    public List<String> prefix(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.prefix", this, faker);
+        } else {
+            return Arrays.asList(prefix());
+        }
     }
 
     /**
@@ -103,8 +134,13 @@ public class Name {
     public String suffix() {
         return faker.fakeValuesService().resolve("name.suffix", this, faker);
     }
-    public List<String> suffixes() {
-        return faker.fakeValuesService().resolveAll("name.suffix", this, faker);
+
+    public List<String> suffix(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.suffix", this, faker);
+        } else {
+            return Arrays.asList(suffix());
+        }
     }
 
     /**
@@ -124,6 +160,23 @@ public class Name {
             faker.fakeValuesService().resolve("name.title.descriptor", this, faker), 
             faker.fakeValuesService().resolve("name.title.level", this, faker), 
             faker.fakeValuesService().resolve("name.title.job", this, faker) }, " ");
+    }
+
+    public List<String> title(Boolean returnAll) {
+        if (returnAll) {
+            List<String> results = new ArrayList<>();
+            List<List<String>> generated = new ArrayList<>();
+            generated.add(faker.fakeValuesService().resolveAll("name.title.descriptor", this, faker));
+            generated.add(faker.fakeValuesService().resolveAll("name.title.level", this, faker));
+            generated.add(faker.fakeValuesService().resolveAll("name.title.job", this, faker));
+            List<List<String>> components = Lists.cartesianProduct(generated);
+            for (List<String> comp: components) {
+                results.add(StringUtils.join(comp.toArray(), " "));
+            }
+            return results;
+        } else {
+            return Arrays.asList(title());
+        }
     }
 
     /**
@@ -150,6 +203,26 @@ public class Name {
 
         return StringUtils.deleteWhitespace(username);
     }
+
+    public List<String> username(Boolean returnAll) {
+        if (returnAll) {
+            List<String> results = new ArrayList<>();
+            List<List<String>> generated = new ArrayList<>();
+            generated.add(firstName(true));
+            generated.add(lastName(true));
+            List<List<String>> components = Lists.cartesianProduct(generated);
+            for (List<String> comp: components) {
+                String user = StringUtils.join(
+                        comp.get(0).replaceAll("'", "").toLowerCase(),
+                        ".",
+                        comp.get(1).replaceAll("'", "").toLowerCase());
+                results.add(StringUtils.deleteWhitespace(user));
+            }
+            return results;
+        } else {
+            return Arrays.asList(username());
+        }
+    }
     
     /**
      * <p>Returns a blood group such as O−, O+, A-, A+, B-, B+, AB-, AB+</p>
@@ -157,5 +230,13 @@ public class Name {
      */
     public String bloodGroup() {
         return faker.fakeValuesService().resolve("name.blood_group", this, faker);
+    }
+
+    public List<String> bloodGroup(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.blood_group", this, faker);
+        } else {
+            return Arrays.asList(faker.fakeValuesService().resolve("name.blood_group", this, faker));
+        }
     }
 }
