@@ -359,7 +359,7 @@ public class FakeValuesService {
      */
     public List<String> resolveAll(String key, Object current, Faker root) {
         final List<String> expressions = safeFetchAll(key);
-        List<String> results = new ArrayList<>();
+        List<String> results = new ArrayList<String>();
         int resultSize = 0;
         if (expressions.isEmpty()) {
             throw new RuntimeException(key + " resulted in no expressions");
@@ -415,7 +415,7 @@ public class FakeValuesService {
             final String directive = matcher.group(1);
             final String arguments = matcher.group(2);
             final Matcher argsMatcher = EXPRESSION_ARGUMENTS_PATTERN.matcher(arguments);
-            List<String> args = new ArrayList<>();
+            List<String> args = new ArrayList<String>();
             while (argsMatcher.find()) {
                 args.add(argsMatcher.group(1));
             }
@@ -439,10 +439,10 @@ public class FakeValuesService {
     protected List<String> resolveExpressionAll(String expression, Object current, Faker root) {
         final Matcher matcher = EXPRESSION_PATTERN.matcher(expression);
 
-        List<String> results = new ArrayList<>();
+        List<String> results = new ArrayList<String>();
 
-        List<String> matchedDirectives = new ArrayList<>();
-        List<List<String>> resolvedExprs = new ArrayList<>();
+        List<String> matchedDirectives = new ArrayList<String>();
+        List<List<String>> resolvedExprs = new ArrayList<List<String>>();
         long productSize = 1;
 
         while (matcher.find()) {
@@ -450,14 +450,14 @@ public class FakeValuesService {
             final String directive = matcher.group(1);
             final String arguments = matcher.group(2);
             final Matcher argsMatcher = EXPRESSION_ARGUMENTS_PATTERN.matcher(arguments);
-            List<String> args = new ArrayList<>();
+            List<String> args = new ArrayList<String>();
             while (argsMatcher.find()) {
                 args.add(argsMatcher.group(1));
             }
 
             // resolve the expression and reprocess it to handle recursive templates
             List<String> resolved = resolveExpressionAll(directive, args, current, root);
-            List<String> resolvedResult = new ArrayList<>();
+            List<String> resolvedResult = new ArrayList<String>();
             if (resolved.isEmpty()) {
                 throw new RuntimeException("Unable to resolve " + escapedDirective + " directive.");
             }
@@ -666,7 +666,7 @@ public class FakeValuesService {
      * Returns a list of all possible results.
      */
     private List<String> resolveFromMethodOnAll(Object obj, String directive, List<String> args) {
-        List<String> empty = new ArrayList<>();
+        List<String> empty = new ArrayList<String>();
         if (obj == null) {
             return empty;
         }
@@ -724,7 +724,7 @@ public class FakeValuesService {
      */
     private List<String> resolveFakerObjectAndMethodAll(Faker faker, String key, List<String> args) {
         final String[] classAndMethod = key.split("\\.", 2);
-        List<String> empty = new ArrayList<>();
+        List<String> empty = new ArrayList<String>();
 
         try {
             String fakerMethodName = classAndMethod[0].replaceAll("_", "");
