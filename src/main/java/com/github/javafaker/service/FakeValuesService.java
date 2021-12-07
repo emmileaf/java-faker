@@ -27,6 +27,7 @@ public class FakeValuesService {
 
     private final List<FakeValuesInterface> fakeValuesList;
     private final RandomService randomService;
+    private final int maxResultSize;
 
     /**
      * <p>
@@ -48,13 +49,15 @@ public class FakeValuesService {
      *
      * @param locale
      * @param randomService
+     * @param maxResultsSize
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public FakeValuesService(Locale locale, RandomService randomService) {
+    public FakeValuesService(Locale locale, RandomService randomService, int maxResultsSize) {
         if (locale == null) {
             throw new IllegalArgumentException("locale is required");
         }
         this.randomService = randomService;
+        this.maxResultSize = maxResultsSize;
         locale = normalizeLocale(locale);
 
         final List<Locale> locales = localeChain(locale);
@@ -74,6 +77,13 @@ public class FakeValuesService {
         }
 
         this.fakeValuesList = Collections.unmodifiableList(all);
+    }
+
+    /**
+     * Constructor that specifies size cap for returning entire generated datasets to default value of 5000.
+     */
+    public FakeValuesService(Locale locale, RandomService randomService) {
+        this(locale, randomService, 5000);
     }
 
     /**
@@ -338,14 +348,9 @@ public class FakeValuesService {
     }
 
     /**
-     * Resolves a key to a method on an object.
-     * <p>
-     * #{hello} with result in a method call to current.hello();
-     * <p>
-     * #{Person.hello_someone} will result in a method call to person.helloSomeone();
+     * Resolves a key to a method on an object. Returns a list of all possible results.
      */
     public List<String> resolveAll(String key, Object current, Faker root) {
-//        System.out.println("Calling resolveAll, key=" + key);
         final List<String> expressions = safeFetchAll(key);
         List<String> results = new ArrayList<>();
         if (expressions.isEmpty()) {
@@ -354,13 +359,12 @@ public class FakeValuesService {
         for (String expr : expressions) {
             List<String> newResults = resolveExpressionAll(expr, current, root);
             long newResultsSize = newResults.size();
-            if (newResultsSize > 5000) {
-                System.out.println("Results too large, taking a sample");
-                newResults = newResults.subList(0, 5000);
+            if (newResultsSize > maxResultSize) {
+                log.log(Level.FINE, "For key " + key + ", result list is too large, truncating.");
+                newResults = newResults.subList(0, maxResultSize);
             }
             results.addAll(newResults);
         }
-//        System.out.println("Results size: " + results.size());
         return results;
     }
 
@@ -394,38 +398,36 @@ public class FakeValuesService {
      * </p>
      */
     protected String resolveExpression(String expression, Object current, Faker root) {
-//        System.out.println("Calling protected resolveExpression, expression=" + expression);
         final Matcher matcher = EXPRESSION_PATTERN.matcher(expression);
 
         String result = expression;
         while (matcher.find()) {
             final String escapedDirective = matcher.group(0);
-//            System.out.println("Match found for expression: " + expression + ", escapedDirective=" + escapedDirective);
             final String directive = matcher.group(1);
             final String arguments = matcher.group(2);
             final Matcher argsMatcher = EXPRESSION_ARGUMENTS_PATTERN.matcher(arguments);
-            List<String> args = new ArrayList<String>();
+            List<String> args = new ArrayList<>();
             while (argsMatcher.find()) {
                 args.add(argsMatcher.group(1));
             }
 
             // resolve the expression and reprocess it to handle recursive templates
             String resolved = resolveExpression(directive, args, current, root);
-//            System.out.println("resolved: " + resolved);
             if (resolved == null) {
                 throw new RuntimeException("Unable to resolve " + escapedDirective + " directive.");
             }
-
             resolved = resolveExpression(resolved, current, root);
-//            System.out.println("resolved: " + resolved);
             result = StringUtils.replaceOnce(result, escapedDirective, resolved);
         }
-//        System.out.println("Results: " + result);
         return result;
     }
 
+    /**
+     * Processes a expression in the style #{X.y} using the current objects as the 'current' location
+     * within the yml file (or the {@link Faker} object hierarchy as it were).
+     * Returns a list of all generated results.
+     */
     protected List<String> resolveExpressionAll(String expression, Object current, Faker root) {
-//        System.out.println("Calling protected resolveExpressionAll, expression=" + expression);
         final Matcher matcher = EXPRESSION_PATTERN.matcher(expression);
 
         List<String> results = new ArrayList<>();
@@ -436,7 +438,6 @@ public class FakeValuesService {
 
         while (matcher.find()) {
             final String escapedDirective = matcher.group(0);
-//            System.out.println("Match found for expression: " + expression + ", escapedDirective=" + escapedDirective);
             final String directive = matcher.group(1);
             final String arguments = matcher.group(2);
             final Matcher argsMatcher = EXPRESSION_ARGUMENTS_PATTERN.matcher(arguments);
@@ -452,17 +453,14 @@ public class FakeValuesService {
                 throw new RuntimeException("Unable to resolve " + escapedDirective + " directive.");
             }
             for (String expr: resolved) {
-//                System.out.println("expr: " + expr);
                 List<String> recurResolved = resolveExpressionAll(expr, current, root);
-//                System.out.println("recurResolved: " + recurResolved.toString());
                 resolvedResult.addAll(recurResolved);
             }
 
             int resultSize = resolvedResult.size();
-//            System.out.println("Size of resolved results = " + resultSize);
-            if (productSize * resultSize > Integer.MAX_VALUE) {
+            if (productSize * resultSize > maxResultSize) {
                 // Cartesian product too large, only add first value
-                System.out.println("Cartesian product too large, adding first value");
+                log.log(Level.FINE, "For directive " + escapedDirective + ", cartesian product is too large");
                 matchedDirectives.add(escapedDirective);
                 resolvedExprs.add(Arrays.asList(resolvedResult.get(0)));
 
@@ -474,28 +472,17 @@ public class FakeValuesService {
         }
 
         if (!matchedDirectives.isEmpty()) {
-
-            try {
-//                System.out.println(matchedDirectives);
-                assert(matchedDirectives.size() == resolvedExprs.size());
-                List<List<String>> resolutions = Lists.cartesianProduct(resolvedExprs);
-                for (List<String> values : resolutions) {
-                    String modified = expression;
-                    for (int counter = 0; counter < values.size(); counter++) {
-                        modified = StringUtils.replaceOnce(modified, matchedDirectives.get(counter), values.get(counter));
-                    }
-                    results.add(modified);
+            List<List<String>> resolutions = Lists.cartesianProduct(resolvedExprs);
+            for (List<String> values : resolutions) {
+                String modified = expression;
+                for (int counter = 0; counter < values.size(); counter++) {
+                    modified = StringUtils.replaceOnce(modified, matchedDirectives.get(counter), values.get(counter));
                 }
-            } catch (IllegalArgumentException e) {
-                // Cartesian Product Too Large
-                System.out.println("Cartesian Product Too Large");
-                results.add(resolveExpression(expression, current, root));
+                results.add(modified);
             }
         } else {
             results.add(expression);
         }
-
-//        System.out.println("Results: " + results.toString());
         return results;
     }
 
@@ -511,7 +498,6 @@ public class FakeValuesService {
      * @return null if unable to resolve
      */
     private String resolveExpression(String directive, List<String> args, Object current, Faker root) {
-//        System.out.println("Calling private resolveExpression, directive=" + directive);
         // name.name (resolve locally)
         // Name.first_name (resolve to faker.name().firstName())
         final String simpleDirective = (isDotDirective(directive) || current == null)
@@ -551,12 +537,21 @@ public class FakeValuesService {
             resolved = safeFetch(javaNameToYamlName(simpleDirective), null);
         }
 
-//        System.out.println("Resolved: " + resolved);
         return resolved;
     }
 
+    /**
+     * <h1>Search Order</h1>
+     * <ul>
+     * <li>Search for methods on the current object</li>
+     * <li>local keys in Yaml File</li>
+     * <li>Search for methods on faker child objects</li>
+     * <li>Search for keys in yaml file by transforming object reference to yaml reference</li>
+     * </ul>
+     *
+     * @return empty list if unable to resolve
+     */
     private List<String> resolveExpressionAll(String directive, List<String> args, Object current, Faker root) {
-//        System.out.println("Calling private resolveExpressionAll, directive=" + directive);
         // name.name (resolve locally)
         // Name.first_name (resolve to faker.name().firstName())
         final String simpleDirective = (isDotDirective(directive) || current == null)
@@ -567,7 +562,6 @@ public class FakeValuesService {
         // resolve method references on CURRENT object like #{number_between '1','10'} on Number or
         // #{ssn_valid} on IdNumber
         if (!isDotDirective(directive)) {
-//            System.out.println("Resolving from current object references");
             resolved = resolveFromMethodOnAll(current, directive, args);
         }
 
@@ -575,19 +569,16 @@ public class FakeValuesService {
         // such that if the current yml object is car: and directive is #{wheel} then
         // car.wheel will be looked up in the YAML file.
         if (resolved.isEmpty()) {
-//            System.out.println("Resolving from local keys in YAML");
             resolved = safeFetchAll(simpleDirective);
         }
 
         // resolve method references on faker object like #{regexify '[a-z]'}
         if (resolved.isEmpty() && !isDotDirective(directive)) {
-//            System.out.println("Resolving from faker object references");
             resolved = resolveFromMethodOnAll(root, directive, args);
         }
 
         // Resolve Faker Object method references like #{ClassName.method_name}
         if (resolved.isEmpty() && isDotDirective(directive)) {
-//            System.out.println("Resolving from faker object references");
             resolved = resolveFakerObjectAndMethodAll(root, directive, args);
         }
 
@@ -597,11 +588,8 @@ public class FakeValuesService {
         // did first but FIRST we change the Object reference Class.method_name with a yml style internal refernce ->
         // class.method_name (lowercase)
         if (resolved.isEmpty() && isDotDirective(directive)) {
-//            System.out.println("Resolving from YAML-style references");
             resolved = safeFetchAll(javaNameToYamlName(simpleDirective));
         }
-
-//        System.out.println("Resolved: " + resolved.toString());
         return resolved;
     }
 
@@ -664,13 +652,17 @@ public class FakeValuesService {
         }
     }
 
+    /**
+     * Given a directive like 'firstName', attempts to resolve it to a method.
+     * Returns a list of all possible results.
+     */
     private List<String> resolveFromMethodOnAll(Object obj, String directive, List<String> args) {
         List<String> empty = new ArrayList<>();
         if (obj == null) {
             return empty;
         }
         try {
-            args.add(0, "true"); // returnAll=True
+            args.add(0, "true"); // for supported methods, pass in returnAll=True
             final MethodAndCoercedArgs accessor = accessor(obj, directive, args);
             return (accessor == null)
                     ? empty
@@ -713,12 +705,21 @@ public class FakeValuesService {
         }
     }
 
+    /**
+     * Accepts a {@link Faker} instance and a name.firstName style 'key' which is resolved to the return value of:
+     * {@link Faker#name()}'s {@link Name#firstName()} method.
+     *
+     * @returns a list of strings, representing full dataset results.
+     *
+     * @throws RuntimeException if there's a problem invoking the method or it doesn't exist.
+     */
     private List<String> resolveFakerObjectAndMethodAll(Faker faker, String key, List<String> args) {
         final String[] classAndMethod = key.split("\\.", 2);
         List<String> empty = new ArrayList<>();
 
         try {
             String fakerMethodName = classAndMethod[0].replaceAll("_", "");
+            // pass in returnAll = true to arguments
             MethodAndCoercedArgs fakerAccessor = accessor(faker, fakerMethodName, Arrays.asList("true"));
             if (fakerAccessor == null) {
                 log.fine("Can't find top level faker object named " + fakerMethodName + ".");
@@ -726,7 +727,8 @@ public class FakeValuesService {
             }
             Object objectWithMethodToInvoke = fakerAccessor.invoke(faker);
             String nestedMethodName = classAndMethod[1].replaceAll("_", "");
-            final MethodAndCoercedArgs accessor = accessor(objectWithMethodToInvoke, classAndMethod[1].replaceAll("_", ""), args);
+            final MethodAndCoercedArgs accessor = accessor(objectWithMethodToInvoke,
+                    classAndMethod[1].replaceAll("_", ""), args);
             if (accessor == null) {
                 throw new Exception("Can't find method on "
                         + objectWithMethodToInvoke.getClass().getSimpleName()
@@ -794,10 +796,12 @@ public class FakeValuesService {
         return coerced;
     }
 
+    /** Casts object to string */
     private String string(Object obj) {
         return (obj == null) ? null : obj.toString();
     }
 
+    /** Casts object to list of strings */
     private List<String> stringlist(Object obj) {
         return (obj == null) ? null : (ArrayList) obj;
     }
