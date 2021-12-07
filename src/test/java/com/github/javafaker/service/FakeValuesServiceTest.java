@@ -203,6 +203,23 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
     }
 
     @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Tests the resolveAll method.
+     */
+    public void resolveAllKeyToProperty() {
+        // given
+        final DummyService dummy = mock(DummyService.class);
+        doReturn(new ArrayList(Arrays.asList("Hello", "Hi"))).when(dummy).hello(true);
+
+        // when
+        final List<String> actual = fakeValuesService.resolveAll("property.simpleResolution", dummy, faker);
+
+        // then
+        assertThat(actual, is(Arrays.asList("Hello", "Hi")));
+//        verify(dummy).hello(true);
+    }
+
+    @Test
     public void testLocaleChain() {
         final List<Locale> chain = fakeValuesService.localeChain(Locale.SIMPLIFIED_CHINESE);
 
@@ -341,11 +358,11 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
             return "Hello";
         }
 
-        public List<String> hello(boolean returnAll) {
+        public ArrayList<String> hello(boolean returnAll) {
             if (returnAll) {
-                return Arrays.asList("Hello", "Hi");
+                return new ArrayList<String>(Arrays.asList("Hello", "Hi"));
             } else {
-                return Arrays.asList("Hello");
+                return new ArrayList<String>(Arrays.asList("Hello"));
             }
         }
     }
