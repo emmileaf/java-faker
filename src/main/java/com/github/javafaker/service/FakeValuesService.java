@@ -87,6 +87,13 @@ public class FakeValuesService {
     }
 
     /**
+     * Fetches maximum result size assigned to the service.
+     */
+    public int getMaxResultSize() {
+        return maxResultSize;
+    }
+
+    /**
      * Convert the specified locale into a chain of locales used for message resolution. For example:
      * <p>
      * {@link Locale#FRANCE} (fr_FR) -> [ fr_FR, anotherTest, en ]
@@ -353,15 +360,17 @@ public class FakeValuesService {
     public List<String> resolveAll(String key, Object current, Faker root) {
         final List<String> expressions = safeFetchAll(key);
         List<String> results = new ArrayList<>();
+        int resultSize = 0;
         if (expressions.isEmpty()) {
             throw new RuntimeException(key + " resulted in no expressions");
         }
         for (String expr : expressions) {
             List<String> newResults = resolveExpressionAll(expr, current, root);
-            long newResultsSize = newResults.size();
-            if (newResultsSize > maxResultSize) {
+            int newResultsSize = newResults.size();
+            if (newResultsSize > (maxResultSize - resultSize)) {
                 log.log(Level.FINE, "For key " + key + ", result list is too large, truncating.");
-                newResults = newResults.subList(0, maxResultSize);
+                results.addAll(newResults.subList(0, maxResultSize - resultSize));
+                break;
             }
             results.addAll(newResults);
         }
