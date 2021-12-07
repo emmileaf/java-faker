@@ -30,6 +30,7 @@ public class FakeValuesService {
     private final int maxResultSize;
 
     /**
+     * Modified, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
      * <p>
      * Resolves YAML file using the most specific path first based on language and country code.
      * 'en_US' would resolve in the following order:
@@ -80,6 +81,7 @@ public class FakeValuesService {
     }
 
     /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
      * Constructor that specifies size cap for returning entire generated datasets to default value of 5000.
      */
     public FakeValuesService(Locale locale, RandomService randomService) {
@@ -87,6 +89,7 @@ public class FakeValuesService {
     }
 
     /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
      * Fetches maximum result size assigned to the service.
      */
     public int getMaxResultSize() {
@@ -186,17 +189,9 @@ public class FakeValuesService {
     }
 
     /**
-     * Safely fetches a key, returning a list of all available results.
-     * <p>
-     * If there are no available values, it will return an empty list.
-     * <p>
-     * If the retrieved values are slash encoded regular expressions such as {@code /[a-b]/} then
-     * the regex will be converted to a regexify expression and returned (ex. {@code #regexify '[a-b]'})
-     * <p>
-     * Otherwise it will just return the values as strings.
-     *
-     * @param key           the key to fetch from the YML structure.
-     * @return see above
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Safely fetches a key similar to above, but returns full dataset of values.
+     * @return a list of all available results.
      */
     public List<String> safeFetchAll(String key) {
         List<String> results = new ArrayList<String>();
@@ -355,7 +350,9 @@ public class FakeValuesService {
     }
 
     /**
-     * Resolves a key to a method on an object. Returns a list of all possible results.
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Resolves a key to a method on an object, similar to above but to full dataset.
+     * @return a list of all possible results.
      */
     public List<String> resolveAll(String key, Object current, Faker root) {
         final List<String> expressions = safeFetchAll(key);
@@ -432,9 +429,10 @@ public class FakeValuesService {
     }
 
     /**
-     * Processes a expression in the style #{X.y} using the current objects as the 'current' location
-     * within the yml file (or the {@link Faker} object hierarchy as it were).
-     * Returns a list of all generated results.
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * See above, but returns full dataset of resolved expressions.
+     * Truncates to return a subset if maxResultsSize is exceeded.
+     * @return a list of all generated results.
      */
     protected List<String> resolveExpressionAll(String expression, Object current, Faker root) {
         final Matcher matcher = EXPRESSION_PATTERN.matcher(expression);
@@ -550,14 +548,8 @@ public class FakeValuesService {
     }
 
     /**
-     * <h1>Search Order</h1>
-     * <ul>
-     * <li>Search for methods on the current object</li>
-     * <li>local keys in Yaml File</li>
-     * <li>Search for methods on faker child objects</li>
-     * <li>Search for keys in yaml file by transforming object reference to yaml reference</li>
-     * </ul>
-     *
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * See above for search order, returns list of all resolution results
      * @return empty list if unable to resolve
      */
     private List<String> resolveExpressionAll(String directive, List<String> args, Object current, Faker root) {
@@ -662,8 +654,8 @@ public class FakeValuesService {
     }
 
     /**
-     * Given a directive like 'firstName', attempts to resolve it to a method.
-     * Returns a list of all possible results.
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * See above, returns a list of all possible results.
      */
     private List<String> resolveFromMethodOnAll(Object obj, String directive, List<String> args) {
         List<String> empty = new ArrayList<String>();
@@ -715,12 +707,8 @@ public class FakeValuesService {
     }
 
     /**
-     * Accepts a {@link Faker} instance and a name.firstName style 'key' which is resolved to the return value of:
-     * {@link Faker#name()}'s {@link Name#firstName()} method.
-     *
-     * @returns a list of strings, representing full dataset results.
-     *
-     * @throws RuntimeException if there's a problem invoking the method or it doesn't exist.
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * See above, returns a list of all possible results.
      */
     private List<String> resolveFakerObjectAndMethodAll(Faker faker, String key, List<String> args) {
         final String[] classAndMethod = key.split("\\.", 2);
@@ -810,9 +798,18 @@ public class FakeValuesService {
         return (obj == null) ? null : obj.toString();
     }
 
-    /** Casts object to list of strings */
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Casts object to list of strings
+     * */
     private List<String> stringlist(Object obj) {
-        return (obj == null) ? null : (ArrayList) obj;
+        List<String> result = new ArrayList<String>();
+        if (obj != null) {
+            for (Object o : (ArrayList) obj) {
+                result.add(o.toString());
+            }
+        }
+        return result;
     }
 
     /**
