@@ -45,6 +45,15 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
     }
 
     @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Tests the constructor with maxResultSize specified, as well as the getMaxResultSize method.
+     */
+    public void maxResultSizeDefault() {
+        fakeValuesService = spy(new FakeValuesService(new Locale("test"), randomService, 10));
+        assertThat(fakeValuesService.getMaxResultSize(), is(10));
+    }
+
+    @Test
     public void fetchStringShouldReturnValue() {
         assertThat(fakeValuesService.fetchString("property.dummy"), is("x"));
     }
@@ -73,6 +82,14 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
     @Test
     public void safeFetchShouldReturnEmptyStringWhenPropertyDoesntExist() {
         assertThat(fakeValuesService.safeFetch("property.dummy2", ""), isEmptyString());
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Tests the safeFetchAll method.
+     */
+    public void safeFetchAllShouldReturnFullList() {
+        assertThat(fakeValuesService.safeFetchAll("property.dummy"), is(Arrays.asList("x", "y", "z")));
     }
 
     @Test
@@ -322,6 +339,14 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
 
         public String hello() {
             return "Hello";
+        }
+
+        public List<String> hello(boolean returnAll) {
+            if (returnAll) {
+                return Arrays.asList("Hello", "Hi");
+            } else {
+                return Arrays.asList("Hello");
+            }
         }
     }
 }

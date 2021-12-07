@@ -20,6 +20,11 @@ public class NameTest  extends AbstractFakerTest{
     @Test
     public void testName() {
         assertThat(faker.name().name(), matchesRegularExpression("([\\w']+\\.?( )?){2,3}"));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463 */
+    public void testNameAll() {
         List<String> allNames = faker.name().name(true);
         List<String> oneName = faker.name().name(false);
         assertThat(oneName.size(), lessThan(allNames.size()));
@@ -29,6 +34,11 @@ public class NameTest  extends AbstractFakerTest{
     @Test
     public void testNameWithMiddle() {
         assertThat(faker.name().nameWithMiddle(), matchesRegularExpression("([\\w']+\\.?( )?){3,4}"));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463 */
+    public void testNameWithMiddleAll() {
         List<String> allNames = faker.name().nameWithMiddle(true);
         List<String> oneName = faker.name().nameWithMiddle(false);
         assertThat(oneName.size(), lessThan(allNames.size()));
@@ -47,6 +57,11 @@ public class NameTest  extends AbstractFakerTest{
     @Test
     public void testFullName() {
         assertThat(faker.name().fullName(), matchesRegularExpression("([\\w']+\\.?( )?){2,4}"));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463 */
+    public void testFullNameAll() {
         List<String> allNames = faker.name().fullName(true);
         List<String> oneName = faker.name().fullName(false);
         assertThat(oneName.size(), lessThan(allNames.size()));
@@ -56,6 +71,11 @@ public class NameTest  extends AbstractFakerTest{
     @Test
     public void testFirstName() {
         assertThat(faker.name().firstName(), matchesRegularExpression("\\w+"));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463 */
+    public void testFirstNameAll() {
         List<String> allNames = faker.name().firstName(true);
         List<String> oneName = faker.name().firstName(false);
         assertThat(oneName.size(), lessThan(allNames.size()));
@@ -66,6 +86,11 @@ public class NameTest  extends AbstractFakerTest{
     @Test
     public void testLastName() {
         assertThat(faker.name().lastName(), matchesRegularExpression("[A-Za-z']+"));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463 */
+    public void testLastNameAll() {
         List<String> allNames = faker.name().lastName(true);
         List<String> oneName = faker.name().lastName(false);
         assertThat(oneName.size(), lessThan(allNames.size()));
@@ -76,6 +101,11 @@ public class NameTest  extends AbstractFakerTest{
     @Test
     public void testPrefix() {
         assertThat(faker.name().prefix(), matchesRegularExpression("\\w+\\.?"));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463 */
+    public void testPrefixAll() {
         List<String> allNames = faker.name().prefix(true);
         List<String> oneName = faker.name().prefix(false);
         assertThat(oneName.size(), lessThan(allNames.size()));
@@ -86,6 +116,11 @@ public class NameTest  extends AbstractFakerTest{
     @Test
     public void testSuffix() {
         assertThat(faker.name().suffix(), matchesRegularExpression("\\w+\\.?"));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463 */
+    public void testSuffixAll() {
         List<String> allNames = faker.name().suffix(true);
         List<String> oneName = faker.name().suffix(false);
         assertThat(oneName.size(), lessThan(allNames.size()));
@@ -96,6 +131,11 @@ public class NameTest  extends AbstractFakerTest{
     @Test
     public void testTitle() {
         assertThat(faker.name().title(), matchesRegularExpression("(\\w+\\.?( )?){3}"));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463 */
+    public void testTitleAll() {
         List<String> allNames = faker.name().title(true);
         List<String> oneName = faker.name().title(false);
         assertThat(oneName.size(), lessThan(allNames.size()));
@@ -106,6 +146,11 @@ public class NameTest  extends AbstractFakerTest{
     @Test
     public void testUsername() {
         assertThat(faker.name().username(), matchesRegularExpression("^(\\w+)\\.(\\w+)$"));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463 */
+    public void testUsernameAll() {
         List<String> allNames = faker.name().username(true);
         List<String> oneName = faker.name().username(false);
         assertThat(oneName.size(), lessThan(allNames.size()));
@@ -123,6 +168,11 @@ public class NameTest  extends AbstractFakerTest{
     @Test
     public void testBloodGroup() {
         assertThat(faker.name().bloodGroup(), matchesRegularExpression("(A|B|AB|O)[+-]"));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463 */
+    public void testBloodGroupAll() {
         List<String> allBloodGroups = faker.name().bloodGroup(true);
         for (String group : allBloodGroups) {
             assertThat(group, matchesRegularExpression("(A|B|AB|O)[+-]"));
