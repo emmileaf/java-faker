@@ -12,6 +12,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -206,7 +207,7 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
     /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
      * Tests the resolveAll method.
      */
-    public void resolveAllKeyToProperty() {
+    public void resolveAllSingleTest() {
         // given
         final DummyService dummy = mock(DummyService.class);
         doReturn(new ArrayList(Arrays.asList("Hello", "Hi"))).when(dummy).hello(true);
@@ -216,7 +217,24 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
 
         // then
         assertThat(actual, is(Arrays.asList("Hello", "Hi")));
-//        verify(dummy).hello(true);
+        verify(dummy).hello(true);
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Tests the resolveAll method.
+     */
+    public void resolveAllMultipleTest() {
+        // given
+        final DummyService dummy = mock(DummyService.class);
+        doReturn(new ArrayList(Arrays.asList("Hello", "Hi"))).when(dummy).hello(true);
+
+        // when
+        final List<String> actual = fakeValuesService.resolveAll("property.sameResolution", dummy, faker);
+
+        // then
+        assertThat(actual, is(Arrays.asList("Hello Hello", "Hello Hi", "Hi Hello", "Hi Hi")));
+        verify(dummy, times(2)).hello(true);
     }
 
     @Test
