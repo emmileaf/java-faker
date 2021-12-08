@@ -174,10 +174,6 @@ public class FakeValuesService {
     @SuppressWarnings("unchecked")
     public String safeFetch(String key, String defaultIfNull) {
         Object o = fetchObject(key);
-        System.out.println(o);
-        for (Object obj: fakeValuesList) {
-            System.out.println(obj.toString());
-        }
         if (o == null) return defaultIfNull;
         if (o instanceof List) {
             List<String> values = (List<String>) o;
@@ -200,10 +196,6 @@ public class FakeValuesService {
     public List<String> safeFetchAll(String key) {
         List<String> results = new ArrayList<String>();
         Object o = fetchObject(key);
-        System.out.println(o);
-        for (Object obj: fakeValuesList) {
-            System.out.println(obj.toString());
-        }
         if (o == null) return results;
         if (o instanceof List) {
             List<String> values = (List<String>) o;
@@ -219,8 +211,6 @@ public class FakeValuesService {
         } else {
             results.add((String) o);
         }
-        System.out.println("key=" + key);
-        System.out.println(results);
         return results;
     }
 
@@ -356,7 +346,6 @@ public class FakeValuesService {
      */
     public String resolve(String key, Object current, Faker root) {
         final String expression = safeFetch(key, null);
-        System.out.println("Expression: " + expression);
 
         if (expression == null) {
             throw new RuntimeException(key + " resulted in null expression");
@@ -378,7 +367,6 @@ public class FakeValuesService {
             throw new RuntimeException(key + " resulted in no expressions");
         }
         for (String expr : expressions) {
-            System.out.println("Expression: " + expr);
             List<String> newResults = resolveExpressionAll(expr, current, root);
             int newResultsSize = newResults.size();
             if (newResultsSize > (maxResultSize - resultSize)) {
@@ -421,7 +409,6 @@ public class FakeValuesService {
      * </p>
      */
     protected String resolveExpression(String expression, Object current, Faker root) {
-        System.out.println("resolveExpression: expr=" + expression);
         final Matcher matcher = EXPRESSION_PATTERN.matcher(expression);
 
         String result = expression;
@@ -443,7 +430,6 @@ public class FakeValuesService {
             resolved = resolveExpression(resolved, current, root);
             result = StringUtils.replaceOnce(result, escapedDirective, resolved);
         }
-        System.out.println("resolveExpression: " + result);
         return result;
     }
 
@@ -454,7 +440,6 @@ public class FakeValuesService {
      * @return a list of all generated results.
      */
     protected List<String> resolveExpressionAll(String expression, Object current, Faker root) {
-        System.out.println("resolveExpressionAll: expr=" + expression);
         final Matcher matcher = EXPRESSION_PATTERN.matcher(expression);
 
         List<String> results = new ArrayList<String>();
@@ -510,7 +495,6 @@ public class FakeValuesService {
         } else {
             results.add(expression);
         }
-        System.out.println("resolveExpressionAll: " + results);
         return results;
     }
 
@@ -526,7 +510,6 @@ public class FakeValuesService {
      * @return null if unable to resolve
      */
     private String resolveExpression(String directive, List<String> args, Object current, Faker root) {
-        System.out.println("resolveExpression2: directive=" + directive);
         // name.name (resolve locally)
         // Name.first_name (resolve to faker.name().firstName())
         final String simpleDirective = (isDotDirective(directive) || current == null)
@@ -565,7 +548,6 @@ public class FakeValuesService {
         if (resolved == null && isDotDirective(directive)) {
             resolved = safeFetch(javaNameToYamlName(simpleDirective), null);
         }
-        System.out.println("resolveExpression2: " + resolved);
         return resolved;
     }
 
@@ -575,7 +557,6 @@ public class FakeValuesService {
      * @return empty list if unable to resolve
      */
     private List<String> resolveExpressionAll(String directive, List<String> args, Object current, Faker root) {
-        System.out.println("resolveExpressionAll2: directive=" + directive);
         // name.name (resolve locally)
         // Name.first_name (resolve to faker.name().firstName())
         final String simpleDirective = (isDotDirective(directive) || current == null)
@@ -587,7 +568,6 @@ public class FakeValuesService {
         // #{ssn_valid} on IdNumber
         if (!isDotDirective(directive)) {
             resolved = resolveFromMethodOnAll(current, directive, args);
-            System.out.println("resolved1: " + resolved);
         }
 
         // simple fetch of a value from the yaml file. the directive may have been mutated
@@ -595,19 +575,16 @@ public class FakeValuesService {
         // car.wheel will be looked up in the YAML file.
         if (resolved.isEmpty()) {
             resolved = safeFetchAll(simpleDirective);
-            System.out.println("resolved2: " + resolved);
         }
 
         // resolve method references on faker object like #{regexify '[a-z]'}
         if (resolved.isEmpty() && !isDotDirective(directive)) {
             resolved = resolveFromMethodOnAll(root, directive, args);
-            System.out.println("resolved3: " + resolved);
         }
 
         // Resolve Faker Object method references like #{ClassName.method_name}
         if (resolved.isEmpty() && isDotDirective(directive)) {
             resolved = resolveFakerObjectAndMethodAll(root, directive, args);
-            System.out.println("resolved4: " + resolved);
         }
 
         // last ditch effort.  Due to Ruby's dynamic nature, something like 'Address.street_title' will resolve
@@ -617,9 +594,7 @@ public class FakeValuesService {
         // class.method_name (lowercase)
         if (resolved.isEmpty() && isDotDirective(directive)) {
             resolved = safeFetchAll(javaNameToYamlName(simpleDirective));
-            System.out.println("resolved5: " + resolved);
         }
-        System.out.println("resolveExpressionAll2: " + resolved);
         return resolved;
     }
 
@@ -687,7 +662,6 @@ public class FakeValuesService {
      * See above, returns a list of all possible results.
      */
     private List<String> resolveFromMethodOnAll(Object obj, String directive, List<String> args) {
-        System.out.println("resolveFromMethodOnAll");
         List<String> empty = new ArrayList<String>();
         if (obj == null) {
             return empty;
@@ -695,15 +669,11 @@ public class FakeValuesService {
         try {
             args.add(0, "true"); // for supported methods, pass in returnAll=True
             final MethodAndCoercedArgs accessor = accessor(obj, directive, args);
-            System.out.println("resolveFromMethodOnAll: accessor=" + accessor.toString());
-            System.out.println("resolveFromMethodOnAll: args=" + args.toString());
             return (accessor == null)
                     ? empty
                     : stringlist(accessor.invoke(obj));
         } catch (Exception e) {
             log.log(Level.FINE, "Can't call " + directive + " on " + obj, e);
-            System.out.println("resolveFromMethodOnAll: Can't call " + directive + " on " + obj);
-            System.out.println(e.getMessage());
             return empty;
         }
     }
