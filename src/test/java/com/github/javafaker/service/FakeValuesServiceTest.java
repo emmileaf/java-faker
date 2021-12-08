@@ -28,6 +28,8 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
 
     private static final Long MILLIS_IN_AN_HOUR = 1000 * 60 * 60L;
     private static final Long MILLIS_IN_A_DAY = MILLIS_IN_AN_HOUR * 24;
+    private static final String HELLOSTR = "Hello";
+    private static final String HISTR = "Hi";
 
     @Mock
     private RandomService randomService;
@@ -210,13 +212,13 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
     public void resolveAllSingleTest() {
         // given
         final DummyService dummy = mock(DummyService.class);
-        doReturn(new ArrayList(Arrays.asList("Hello", "Hi"))).when(dummy).hello(true);
+        doReturn(new ArrayList(Arrays.asList(HELLOSTR, HISTR))).when(dummy).hello(true);
 
         // when
         final List<String> actual = fakeValuesService.resolveAll("property.simpleResolution", dummy, faker);
 
         // then
-        assertThat(actual, is(Arrays.asList("Hello", "Hi")));
+        assertThat(actual, is(Arrays.asList(HELLOSTR, HISTR)));
         verify(dummy).hello(true);
     }
 
@@ -227,7 +229,7 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
     public void resolveAllMultipleTest() {
         // given
         final DummyService dummy = mock(DummyService.class);
-        doReturn(new ArrayList(Arrays.asList("Hello", "Hi"))).when(dummy).hello(true);
+        doReturn(new ArrayList(Arrays.asList(HELLOSTR, HISTR))).when(dummy).hello(true);
 
         // when
         final List<String> actual = fakeValuesService.resolveAll("property.sameResolution", dummy, faker);
@@ -373,14 +375,14 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
         }
 
         public String hello() {
-            return "Hello";
+            return HELLOSTR;
         }
 
-        public ArrayList<String> hello(boolean returnAll) {
+        public List<String> hello(boolean returnAll) {
             if (returnAll) {
-                return new ArrayList<String>(Arrays.asList("Hello", "Hi"));
+                return Arrays.asList(HELLOSTR, HISTR);
             } else {
-                return new ArrayList<String>(Arrays.asList("Hello"));
+                return Arrays.asList(HELLOSTR);
             }
         }
     }

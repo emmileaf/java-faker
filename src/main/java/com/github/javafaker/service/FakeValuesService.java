@@ -196,8 +196,9 @@ public class FakeValuesService {
     public List<String> safeFetchAll(String key) {
         List<String> results = new ArrayList<String>();
         Object o = fetchObject(key);
-        if (o == null) return results;
-        if (o instanceof List) {
+        if (o == null) {
+            return results;
+        } else if (o instanceof List) {
             List<String> values = (List<String>) o;
             for (String s: values) {
                 if (isSlashDelimitedRegex(s)) {
@@ -364,7 +365,7 @@ public class FakeValuesService {
         List<String> results = new ArrayList<String>();
         int resultSize = 0;
         if (expressions.isEmpty()) {
-            throw new RuntimeException(key + " resulted in no expressions");
+            throw new UnsupportedOperationException(key + " resulted in no expressions");
         }
         for (String expr : expressions) {
             List<String> newResults = resolveExpressionAll(expr, current, root);
@@ -462,7 +463,7 @@ public class FakeValuesService {
             List<String> resolved = resolveExpressionAll(directive, args, current, root);
             List<String> resolvedResult = new ArrayList<String>();
             if (resolved.isEmpty()) {
-                throw new RuntimeException("Unable to resolve " + escapedDirective + " directive.");
+                throw new UnsupportedOperationException("Unable to resolve " + escapedDirective + " directive.");
             }
             for (String expr: resolved) {
                 List<String> recurResolved = resolveExpressionAll(expr, current, root);
@@ -731,7 +732,7 @@ public class FakeValuesService {
             final MethodAndCoercedArgs accessor = accessor(objectWithMethodToInvoke,
                     classAndMethod[1].replaceAll("_", ""), args);
             if (accessor == null) {
-                throw new Exception("Can't find method on "
+                throw new UnsupportedOperationException("Can't find method on "
                         + objectWithMethodToInvoke.getClass().getSimpleName()
                         + " called " + nestedMethodName + ".");
             }
