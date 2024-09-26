@@ -4,6 +4,7 @@ import com.github.javafaker.Address;
 import com.github.javafaker.Faker;
 import com.github.javafaker.Name;
 import com.github.javafaker.service.files.EnFile;
+import com.google.common.collect.Lists;
 import com.mifmif.common.regex.Generex;
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -11,11 +12,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -30,8 +27,10 @@ public class FakeValuesService {
 
     private final List<FakeValuesInterface> fakeValuesList;
     private final RandomService randomService;
+    private final int maxResultSize;
 
     /**
+     * Modified, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
      * <p>
      * Resolves YAML file using the most specific path first based on language and country code.
      * 'en_US' would resolve in the following order:
@@ -51,13 +50,15 @@ public class FakeValuesService {
      *
      * @param locale
      * @param randomService
+     * @param maxResultsSize
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public FakeValuesService(Locale locale, RandomService randomService) {
+    public FakeValuesService(Locale locale, RandomService randomService, int maxResultsSize) {
         if (locale == null) {
             throw new IllegalArgumentException("locale is required");
         }
         this.randomService = randomService;
+        this.maxResultSize = maxResultsSize;
         locale = normalizeLocale(locale);
 
         final List<Locale> locales = localeChain(locale);
@@ -77,6 +78,22 @@ public class FakeValuesService {
         }
 
         this.fakeValuesList = Collections.unmodifiableList(all);
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Constructor that specifies size cap for returning entire generated datasets to default value of 5000.
+     */
+    public FakeValuesService(Locale locale, RandomService randomService) {
+        this(locale, randomService, 5000);
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Fetches maximum result size assigned to the service.
+     */
+    public int getMaxResultSize() {
+        return maxResultSize;
     }
 
     /**
@@ -169,6 +186,33 @@ public class FakeValuesService {
         } else {
             return (String) o;
         }
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Safely fetches a key similar to above, but returns full dataset of values.
+     * @return a list of all available results.
+     */
+    public List<String> safeFetchAll(String key) {
+        List<String> results = new ArrayList<String>();
+        Object o = fetchObject(key);
+        if (o == null) {
+            return results;
+        } else if (o instanceof List) {
+            List<String> values = (List<String>) o;
+            for (String s: values) {
+                if (isSlashDelimitedRegex(s)) {
+                    results.add(String.format("#{regexify '%s'}", trimRegexSlashes(s)));
+                } else {
+                    results.add(s);
+                }
+            }
+        } else if (isSlashDelimitedRegex(o.toString())) {
+            results.add(String.format("#{regexify '%s'}", trimRegexSlashes(o.toString())));
+        } else {
+            results.add((String) o);
+        }
+        return results;
     }
 
     /**
@@ -312,6 +356,31 @@ public class FakeValuesService {
     }
 
     /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Resolves a key to a method on an object, similar to above but to full dataset.
+     * @return a list of all possible results.
+     */
+    public List<String> resolveAll(String key, Object current, Faker root) {
+        final List<String> expressions = safeFetchAll(key);
+        List<String> results = new ArrayList<String>();
+        int resultSize = 0;
+        if (expressions.isEmpty()) {
+            throw new UnsupportedOperationException(key + " resulted in no expressions");
+        }
+        for (String expr : expressions) {
+            List<String> newResults = resolveExpressionAll(expr, current, root);
+            int newResultsSize = newResults.size();
+            if (newResultsSize > (maxResultSize - resultSize)) {
+                log.log(Level.FINE, "For key " + key + ", result list is too large, truncating.");
+                results.addAll(newResults.subList(0, maxResultSize - resultSize));
+                break;
+            }
+            results.addAll(newResults);
+        }
+        return results;
+    }
+
+    /**
      * resolves an expression using the current faker.
      *
      * @param expression
@@ -359,11 +428,75 @@ public class FakeValuesService {
             if (resolved == null) {
                 throw new RuntimeException("Unable to resolve " + escapedDirective + " directive.");
             }
-
             resolved = resolveExpression(resolved, current, root);
             result = StringUtils.replaceOnce(result, escapedDirective, resolved);
         }
         return result;
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * See above, but returns full dataset of resolved expressions.
+     * Truncates to return a subset if maxResultsSize is exceeded.
+     * @return a list of all generated results.
+     */
+    protected List<String> resolveExpressionAll(String expression, Object current, Faker root) {
+        final Matcher matcher = EXPRESSION_PATTERN.matcher(expression);
+
+        List<String> results = new ArrayList<String>();
+
+        List<String> matchedDirectives = new ArrayList<String>();
+        List<List<String>> resolvedExprs = new ArrayList<List<String>>();
+        long productSize = 1;
+
+        while (matcher.find()) {
+            final String escapedDirective = matcher.group(0);
+            final String directive = matcher.group(1);
+            final String arguments = matcher.group(2);
+            final Matcher argsMatcher = EXPRESSION_ARGUMENTS_PATTERN.matcher(arguments);
+            List<String> args = new ArrayList<String>();
+            while (argsMatcher.find()) {
+                args.add(argsMatcher.group(1));
+            }
+
+            // resolve the expression and reprocess it to handle recursive templates
+            List<String> resolved = resolveExpressionAll(directive, args, current, root);
+            List<String> resolvedResult = new ArrayList<String>();
+            if (resolved.isEmpty()) {
+                throw new UnsupportedOperationException("Unable to resolve " + escapedDirective + " directive.");
+            }
+            for (String expr: resolved) {
+                List<String> recurResolved = resolveExpressionAll(expr, current, root);
+                resolvedResult.addAll(recurResolved);
+            }
+
+            int resultSize = resolvedResult.size();
+            if (productSize * resultSize > maxResultSize) {
+                // Cartesian product too large, only add first value
+                log.log(Level.FINE, "For directive " + escapedDirective + ", cartesian product is too large");
+                matchedDirectives.add(escapedDirective);
+                resolvedExprs.add(Arrays.asList(resolvedResult.get(0)));
+
+            } else {
+                productSize *= resolvedResult.size();
+                matchedDirectives.add(escapedDirective);
+                resolvedExprs.add(resolvedResult);
+            }
+        }
+
+        if (!matchedDirectives.isEmpty()) {
+            List<List<String>> resolutions = Lists.cartesianProduct(resolvedExprs);
+            for (List<String> values : resolutions) {
+                String modified = expression;
+                for (int counter = 0; counter < values.size(); counter++) {
+                    modified = StringUtils.replaceOnce(modified, matchedDirectives.get(counter), values.get(counter));
+                }
+                results.add(modified);
+            }
+        } else {
+            results.add(expression);
+        }
+        return results;
     }
 
     /**
@@ -416,10 +549,55 @@ public class FakeValuesService {
         if (resolved == null && isDotDirective(directive)) {
             resolved = safeFetch(javaNameToYamlName(simpleDirective), null);
         }
-
         return resolved;
     }
 
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * See above for search order, returns list of all resolution results
+     * @return empty list if unable to resolve
+     */
+    private List<String> resolveExpressionAll(String directive, List<String> args, Object current, Faker root) {
+        // name.name (resolve locally)
+        // Name.first_name (resolve to faker.name().firstName())
+        final String simpleDirective = (isDotDirective(directive) || current == null)
+                ? directive
+                : classNameToYamlName(current) + "." + directive;
+
+        List<String> resolved = new ArrayList<String>();
+        // resolve method references on CURRENT object like #{number_between '1','10'} on Number or
+        // #{ssn_valid} on IdNumber
+        if (!isDotDirective(directive)) {
+            resolved = resolveFromMethodOnAll(current, directive, args);
+        }
+
+        // simple fetch of a value from the yaml file. the directive may have been mutated
+        // such that if the current yml object is car: and directive is #{wheel} then
+        // car.wheel will be looked up in the YAML file.
+        if (resolved.isEmpty()) {
+            resolved = safeFetchAll(simpleDirective);
+        }
+
+        // resolve method references on faker object like #{regexify '[a-z]'}
+        if (resolved.isEmpty() && !isDotDirective(directive)) {
+            resolved = resolveFromMethodOnAll(root, directive, args);
+        }
+
+        // Resolve Faker Object method references like #{ClassName.method_name}
+        if (resolved.isEmpty() && isDotDirective(directive)) {
+            resolved = resolveFakerObjectAndMethodAll(root, directive, args);
+        }
+
+        // last ditch effort.  Due to Ruby's dynamic nature, something like 'Address.street_title' will resolve
+        // because 'street_title' is a dynamic method on the Address object.  We can't do this in Java so we go
+        // thru the normal resolution above, but if we will can't resolve it, we once again do a 'safeFetch' as we
+        // did first but FIRST we change the Object reference Class.method_name with a yml style internal refernce ->
+        // class.method_name (lowercase)
+        if (resolved.isEmpty() && isDotDirective(directive)) {
+            resolved = safeFetchAll(javaNameToYamlName(simpleDirective));
+        }
+        return resolved;
+    }
 
     /**
      * @param expression input expression
@@ -481,6 +659,27 @@ public class FakeValuesService {
     }
 
     /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * See above, returns a list of all possible results.
+     */
+    private List<String> resolveFromMethodOnAll(Object obj, String directive, List<String> args) {
+        List<String> empty = new ArrayList<String>();
+        if (obj == null) {
+            return empty;
+        }
+        try {
+            args.add(0, "true"); // for supported methods, pass in returnAll=True
+            final MethodAndCoercedArgs accessor = accessor(obj, directive, args);
+            return (accessor == null)
+                    ? empty
+                    : stringlist(accessor.invoke(obj));
+        } catch (Exception e) {
+            log.log(Level.FINE, "Can't call " + directive + " on " + obj, e);
+            return empty;
+        }
+    }
+
+    /**
      * Accepts a {@link Faker} instance and a name.firstName style 'key' which is resolved to the return value of:
      * {@link Faker#name()}'s {@link Name#firstName()} method.
      *
@@ -509,6 +708,39 @@ public class FakeValuesService {
         } catch (Exception e) {
             log.fine(e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * See above, returns a list of all possible results.
+     */
+    private List<String> resolveFakerObjectAndMethodAll(Faker faker, String key, List<String> args) {
+        final String[] classAndMethod = key.split("\\.", 2);
+        List<String> empty = new ArrayList<String>();
+
+        try {
+            String fakerMethodName = classAndMethod[0].replaceAll("_", "");
+            // pass in returnAll = true to arguments
+            MethodAndCoercedArgs fakerAccessor = accessor(faker, fakerMethodName, Arrays.asList("true"));
+            if (fakerAccessor == null) {
+                log.fine("Can't find top level faker object named " + fakerMethodName + ".");
+                return empty;
+            }
+            Object objectWithMethodToInvoke = fakerAccessor.invoke(faker);
+            String nestedMethodName = classAndMethod[1].replaceAll("_", "");
+            final MethodAndCoercedArgs accessor = accessor(objectWithMethodToInvoke,
+                    classAndMethod[1].replaceAll("_", ""), args);
+            if (accessor == null) {
+                throw new UnsupportedOperationException("Can't find method on "
+                        + objectWithMethodToInvoke.getClass().getSimpleName()
+                        + " called " + nestedMethodName + ".");
+            }
+
+            return stringlist(accessor.invoke(objectWithMethodToInvoke));
+        } catch (Exception e) {
+            log.fine(e.getMessage());
+            return empty;
         }
     }
 
@@ -566,8 +798,23 @@ public class FakeValuesService {
         return coerced;
     }
 
+    /** Casts object to string */
     private String string(Object obj) {
         return (obj == null) ? null : obj.toString();
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Casts object to list of strings
+     * */
+    private List<String> stringlist(Object obj) {
+        List<String> result = new ArrayList<String>();
+        if (obj != null) {
+            for (Object o : (ArrayList) obj) {
+                result.add(o.toString());
+            }
+        }
+        return result;
     }
 
     /**

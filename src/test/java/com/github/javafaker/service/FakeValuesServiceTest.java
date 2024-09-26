@@ -12,6 +12,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -27,6 +28,8 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
 
     private static final Long MILLIS_IN_AN_HOUR = 1000 * 60 * 60L;
     private static final Long MILLIS_IN_A_DAY = MILLIS_IN_AN_HOUR * 24;
+    private static final String HELLOSTR = "Hello";
+    private static final String HISTR = "Hi";
 
     @Mock
     private RandomService randomService;
@@ -42,6 +45,15 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
         when(randomService.nextInt(anyInt())).thenReturn(0);
 
         fakeValuesService = spy(new FakeValuesService(new Locale("test"), randomService));
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Tests the constructor with maxResultSize specified, as well as the getMaxResultSize method.
+     */
+    public void maxResultSizeDefault() {
+        fakeValuesService = spy(new FakeValuesService(new Locale("test"), randomService, 10));
+        assertThat(fakeValuesService.getMaxResultSize(), is(10));
     }
 
     @Test
@@ -73,6 +85,14 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
     @Test
     public void safeFetchShouldReturnEmptyStringWhenPropertyDoesntExist() {
         assertThat(fakeValuesService.safeFetch("property.dummy2", ""), isEmptyString());
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Tests the safeFetchAll method.
+     */
+    public void safeFetchAllShouldReturnFullList() {
+        assertThat(fakeValuesService.safeFetchAll("property.dummy"), is(Arrays.asList("x", "y", "z")));
     }
 
     @Test
@@ -183,6 +203,40 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
         verify(faker).superhero();
         verify(person).descriptor();
         verify(dummy).hello();
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Tests the resolveAll method.
+     */
+    public void resolveAllSingleTest() {
+        // given
+        final DummyService dummy = mock(DummyService.class);
+        doReturn(new ArrayList(Arrays.asList(HELLOSTR, HISTR))).when(dummy).hello(true);
+
+        // when
+        final List<String> actual = fakeValuesService.resolveAll("property.simpleResolution", dummy, faker);
+
+        // then
+        assertThat(actual, is(Arrays.asList(HELLOSTR, HISTR)));
+        verify(dummy).hello(true);
+    }
+
+    @Test
+    /** Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * Tests the resolveAll method.
+     */
+    public void resolveAllMultipleTest() {
+        // given
+        final DummyService dummy = mock(DummyService.class);
+        doReturn(new ArrayList(Arrays.asList(HELLOSTR, HISTR))).when(dummy).hello(true);
+
+        // when
+        final List<String> actual = fakeValuesService.resolveAll("property.sameResolution", dummy, faker);
+
+        // then
+        assertThat(actual, is(Arrays.asList("Hello Hello", "Hello Hi", "Hi Hello", "Hi Hi")));
+        verify(dummy, times(2)).hello(true);
     }
 
     @Test
@@ -321,7 +375,15 @@ public class FakeValuesServiceTest extends AbstractFakerTest {
         }
 
         public String hello() {
-            return "Hello";
+            return HELLOSTR;
+        }
+
+        public List<String> hello(boolean returnAll) {
+            if (returnAll) {
+                return Arrays.asList(HELLOSTR, HISTR);
+            } else {
+                return Arrays.asList(HELLOSTR);
+            }
         }
     }
 }

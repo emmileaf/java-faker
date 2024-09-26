@@ -1,6 +1,11 @@
 package com.github.javafaker;
 
+import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class Name {
     
@@ -30,6 +35,19 @@ public class Name {
     }
 
     /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * @param returnAll, boolean flag for whether the full dataset should be returned
+     * @return list of all names generated
+     */
+    public List<String> name(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.name", this, faker);
+        } else {
+            return Arrays.asList(name());
+        }
+    }
+
+    /**
      * <p>
      *      A multipart name composed of an optional prefix, a given and family name,
      *      another 'firstname' for the middle name and an optional suffix such as Jr. 
@@ -47,11 +65,33 @@ public class Name {
     }
 
     /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * @param returnAll, boolean flag for whether the full dataset should be returned
+     * @return list of all names generated
+     */
+    public List<String> nameWithMiddle(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.name_with_middle", this, faker);
+        } else {
+            return Arrays.asList(nameWithMiddle());
+        }
+    }
+
+    /**
      * <p>Returns the same value as {@link #name()}</p>
      * @see Name#name() 
      */
     public String fullName() {
         return name();
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * @param returnAll, boolean flag for whether the full dataset should be returned
+     * @return list of all names generated
+     */
+    public List<String> fullName(Boolean returnAll) {
+        return name(returnAll);
     }
 
     /**
@@ -63,11 +103,37 @@ public class Name {
     }
 
     /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * @param returnAll, boolean flag for whether the full dataset should be returned
+     * @return list of all names generated
+     */
+    public List<String> firstName(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.first_name", this, faker);
+        } else {
+            return Arrays.asList(firstName());
+        }
+    }
+
+    /**
      * <p>Returns a random last name such as Smith, Jones or Baldwin</p>
      * @return a random last name such as Smith, Jones or Baldwin
      */
     public String lastName() {
         return faker.fakeValuesService().resolve("name.last_name", this, faker);
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * @param returnAll, boolean flag for whether the full dataset should be returned
+     * @return list of all names generated
+     */
+    public List<String> lastName(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.last_name", this, faker);
+        } else {
+            return Arrays.asList(lastName());
+        }
     }
 
     /**
@@ -79,11 +145,37 @@ public class Name {
     }
 
     /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * @param returnAll, boolean flag for whether the full dataset should be returned
+     * @return list of all prefixes generated
+     */
+    public List<String> prefix(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.prefix", this, faker);
+        } else {
+            return Arrays.asList(prefix());
+        }
+    }
+
+    /**
      * <p>Returns a name suffix such as Jr., Sr., I, II, III, IV, V, MD, DDS, PhD or DVM</p>
      * @return a name suffix such as Jr., Sr., I, II, III, IV, V, MD, DDS, PhD or DVM
      */
     public String suffix() {
         return faker.fakeValuesService().resolve("name.suffix", this, faker);
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * @param returnAll, boolean flag for whether the full dataset should be returned
+     * @return list of all suffixes generated
+     */
+    public List<String> suffix(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.suffix", this, faker);
+        } else {
+            return Arrays.asList(suffix());
+        }
     }
 
     /**
@@ -103,6 +195,28 @@ public class Name {
             faker.fakeValuesService().resolve("name.title.descriptor", this, faker), 
             faker.fakeValuesService().resolve("name.title.level", this, faker), 
             faker.fakeValuesService().resolve("name.title.job", this, faker) }, " ");
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * @param returnAll, boolean flag for whether the full dataset should be returned
+     * @return list of all titles generated
+     */
+    public List<String> title(Boolean returnAll) {
+        if (returnAll) {
+            List<String> results = new ArrayList<String>();
+            List<List<String>> generated = new ArrayList<List<String>>();
+            generated.add(faker.fakeValuesService().resolveAll("name.title.descriptor", this, faker));
+            generated.add(faker.fakeValuesService().resolveAll("name.title.level", this, faker));
+            generated.add(faker.fakeValuesService().resolveAll("name.title.job", this, faker));
+            List<List<String>> components = Lists.cartesianProduct(generated);
+            for (List<String> comp: components) {
+                results.add(StringUtils.join(comp.toArray(), " "));
+            }
+            return results;
+        } else {
+            return Arrays.asList(title());
+        }
     }
 
     /**
@@ -129,6 +243,31 @@ public class Name {
 
         return StringUtils.deleteWhitespace(username);
     }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * @param returnAll, boolean flag for whether the full dataset should be returned
+     * @return list of all usernames generated
+     */
+    public List<String> username(Boolean returnAll) {
+        if (returnAll) {
+            List<String> results = new ArrayList<String>();
+            List<List<String>> generated = new ArrayList<List<String>>();
+            generated.add(firstName(true));
+            generated.add(lastName(true));
+            List<List<String>> components = Lists.cartesianProduct(generated);
+            for (List<String> comp: components) {
+                String user = StringUtils.join(
+                        comp.get(0).replaceAll("'", "").toLowerCase(),
+                        ".",
+                        comp.get(1).replaceAll("'", "").toLowerCase());
+                results.add(StringUtils.deleteWhitespace(user));
+            }
+            return results;
+        } else {
+            return Arrays.asList(username());
+        }
+    }
     
     /**
      * <p>Returns a blood group such as O−, O+, A-, A+, B-, B+, AB-, AB+</p>
@@ -136,5 +275,18 @@ public class Name {
      */
     public String bloodGroup() {
         return faker.fakeValuesService().resolve("name.blood_group", this, faker);
+    }
+
+    /**
+     * Added, CS427 Issue link: https://github.com/DiUS/java-faker/issues/463
+     * @param returnAll, boolean flag for whether the full dataset should be returned
+     * @return list of all blood groups generated
+     */
+    public List<String> bloodGroup(Boolean returnAll) {
+        if (returnAll) {
+            return faker.fakeValuesService().resolveAll("name.blood_group", this, faker);
+        } else {
+            return Arrays.asList(faker.fakeValuesService().resolve("name.blood_group", this, faker));
+        }
     }
 }

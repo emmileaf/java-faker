@@ -13,15 +13,9 @@ en:
         - "#{prefix} #{first_name} #{last_name}"
         - "#{first_name} #{last_name} #{suffix}"
         - "#{first_name} #{last_name}"
-        - "#{first_name} #{last_name}"
-        - "#{first_name} #{last_name}"
-        - "#{first_name} #{last_name}"
       name_with_middle:
         - "#{prefix} #{first_name} #{last_name} #{last_name}"
         - "#{first_name} #{last_name} #{last_name} #{suffix}"
-        - "#{first_name} #{last_name} #{last_name}"
-        - "#{first_name} #{last_name} #{last_name}"
-        - "#{first_name} #{last_name} #{last_name}"
         - "#{first_name} #{last_name} #{last_name}"
       title:
         descriptor: [Lead, Senior, Direct, Corporate, Dynamic, Future, Product, National, Regional, District, Central, Global, Customer, Investor, Dynamic, International, Legacy, Forward, Internal, Human, Chief, Principal]
